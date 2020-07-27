@@ -16,6 +16,14 @@ from torch.autograd import Variable
 from model import NetworkCIFAR as Network
 
 
+# add .to_device to torch.Tensor
+import torch
+torch._default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+def to_device(self, *args, **kwargs):
+    return self.to(torch._default_device, *args, **kwargs)
+torch.Tensor.to_device = to_device
+torch.nn.Module.to_device = to_device
+
 parser = argparse.ArgumentParser("cifar")
 parser.add_argument('--data', type=str, default='../data', help='location of the data corpus')
 parser.add_argument('--batch_size', type=int, default=96, help='batch size')
@@ -40,28 +48,28 @@ CIFAR_CLASSES = 10
 
 
 def main():
-  if not torch.cuda.is_available():
-    logging.info('no gpu device available')
-    sys.exit(1)
+    # logging.info('no gpu device available')
+    # sys.exit(1)
 
   np.random.seed(args.seed)
-  torch.cuda.set_device(args.gpu)
-  cudnn.benchmark = True
   torch.manual_seed(args.seed)
-  cudnn.enabled=True
-  torch.cuda.manual_seed(args.seed)
-  logging.info('gpu device = %d' % args.gpu)
+  if torch.cuda.is_available():
+    torch.cuda.set_device(args.gpu)
+    cudnn.benchmark = True
+    cudnn.enabled=True
+    torch.cuda.manual_seed(args.seed)
+    logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
   genotype = eval("genotypes.%s" % args.arch)
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
-  model = model.cuda()
   utils.load(model, args.model_path)
+  model = model.to_device() # to(torch._default_device)
 
   logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
   criterion = nn.CrossEntropyLoss()
-  criterion = criterion.cuda()
+  criterion = criterion.to_device() # to(torch._default_device)
 
   _, test_transform = utils._data_transforms_cifar10(args)
   test_data = dset.CIFAR10(root=args.data, train=False, download=True, transform=test_transform)
@@ -82,8 +90,8 @@ def infer(test_queue, model, criterion):
   model.eval()
 
   for step, (input, target) in enumerate(test_queue):
-    input = Variable(input, volatile=True).cuda()
-    target = Variable(target, volatile=True).cuda(non_blocking=True)
+    input = Variable(input, volatile=True).to_device() # .to(torch._default_device)
+    target = Variable(target, volatile=True).to_device(non_blocking=True) # .to(torch._default_device, non_blocking=True)
 
     logits, _ = model(input)
     loss = criterion(logits, target)
@@ -101,5 +109,5 @@ def infer(test_queue, model, criterion):
 
 
 if __name__ == '__main__':
-  main() 
+  main()
 
