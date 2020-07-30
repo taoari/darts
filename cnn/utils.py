@@ -64,7 +64,7 @@ def _data_transforms_cifar10(args):
   CIFAR_STD = [0.24703233, 0.24348505, 0.26158768]
 
   train_transform = transforms.Compose([
-    transforms.RandomCrop(32, padding=4),
+    transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(CIFAR_MEAN, CIFAR_STD),
