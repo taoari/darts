@@ -99,8 +99,8 @@ def _get_device(model):
     __first_param = next(model.parameters(), None)
     return torch.device('cpu') if __first_param is None else __first_param.device
 
-def load(model, model_path):
-  model.load_state_dict(torch.load(model_path, _get_device(model)))
+def load(model, model_path, strict=True):
+  model.load_state_dict(torch.load(model_path, _get_device(model)), strict=strict)
 
 
 def drop_path(x, drop_prob):

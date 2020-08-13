@@ -63,7 +63,7 @@ def main():
 
   genotype = eval("genotypes.%s" % args.arch)
   model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
-  utils.load(model, args.model_path)
+  utils.load(model, args.model_path, strict=False)
   model = model.to_device() # to(torch._default_device)
 
   logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
