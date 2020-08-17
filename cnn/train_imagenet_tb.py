@@ -62,6 +62,8 @@ classif.print = print
 
 initialize_logger(os.path.join(args.save, 'auto'), mode='a')
 args.writer = initialize_tb_writer(os.path.join(args.save, 'runs'))
+from taowei.torch2.utils.classif import print_torch_info
+print_torch_info()
 
 CLASSES = 1000
 
