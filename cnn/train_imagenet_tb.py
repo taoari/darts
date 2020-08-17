@@ -17,6 +17,7 @@ import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
 from model import NetworkImageNet as Network
+from taowei.torch2.utils import _unwrap_model
 
 
 parser = argparse.ArgumentParser("imagenet")
@@ -26,7 +27,7 @@ parser.add_argument('--learning_rate', type=float, default=0.1, help='init learn
 parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-5, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=100, help='report frequency')
-parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
+# parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=250, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=48, help='num of init channels')
 parser.add_argument('--layers', type=int, default=14, help='total number of layers')
@@ -90,12 +91,12 @@ def main():
     sys.exit(1)
 
   np.random.seed(args.seed)
-  torch.cuda.set_device(args.gpu)
+  # torch.cuda.set_device(args.gpu)
   cudnn.benchmark = True
   torch.manual_seed(args.seed)
   cudnn.enabled=True
   torch.cuda.manual_seed(args.seed)
-  print('gpu device = %d' % args.gpu)
+  # print('gpu device = %d' % args.gpu)
   print("args = %s", args)
 
   genotype = eval("genotypes.%s" % args.arch)
@@ -154,7 +155,8 @@ def main():
 
   # evaluate first
   args.epoch = -1
-  model.drop_path_prob = 0.0
+  _unwrap_model(model).drop_path_prob = 0.0
+  # model.drop_path_prob = 0.0
   valid_acc_top1, valid_acc_top5, valid_obj = infer(valid_queue, model, criterion)
 
   best_acc_top1 = 0
@@ -163,7 +165,8 @@ def main():
 
     scheduler.step(epoch)
     # print('epoch %d lr %e', epoch, scheduler.get_lr()[0])
-    model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
+    _unwrap_model(model).drop_path_prob = args.drop_path_prob * epoch / args.epochs
+    # model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
     train_acc, train_obj = train(train_queue, model, criterion_smooth, optimizer)
     # print('train_acc %f', train_acc)
