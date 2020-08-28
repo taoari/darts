@@ -1,11 +1,12 @@
 import sys
 import genotypes
 from graphviz import Digraph
+import re, os
 
 
 def plot(genotype, filename):
   g = Digraph(
-      format='pdf',
+      format='png',
       edge_attr=dict(fontsize='20', fontname="times"),
       node_attr=dict(style='filled', shape='rect', align='center', fontsize='20', height='0.5', width='0.5', penwidth='2', fontname="times"),
       engine='dot')
@@ -43,13 +44,28 @@ if __name__ == '__main__':
     print("usage:\n python {} ARCH_NAME".format(sys.argv[0]))
     sys.exit(1)
 
-  genotype_name = sys.argv[1]
-  try:
-    genotype = eval('genotypes.{}'.format(genotype_name))
-  except AttributeError:
-    print("{} is not specified in genotypes.py".format(genotype_name)) 
-    sys.exit(1)
+  if os.path.exists(sys.argv[1]):
+    gens = []
+    with open(sys.argv[1]) as f:
+      for line in f.readlines():
+        match = re.match(r'.*(Genotype\(.*\))', line)
+        if match is not None:
+          gens.append(match.group(1))
+    for i, gen in enumerate(gens):
+      from genotypes import Genotype
+      genotype = eval(gen)
+      plot(genotype.normal, "genotype.normal.{}.gv".format(i))
+      plot(genotype.reduce, "genotype.reduction.{}.gv".format(i))
 
-  plot(genotype.normal, "normal")
-  plot(genotype.reduce, "reduction")
+  else:
+
+    genotype_name = sys.argv[1]
+    try:
+      genotype = eval('genotypes.{}'.format(genotype_name))
+    except AttributeError:
+      print("{} is not specified in genotypes.py".format(genotype_name))
+      sys.exit(1)
+
+    plot(genotype.normal, "genotye.{}.normal.gv".format(genotype_name))
+    plot(genotype.reduce, "genotye.{}.reduction.gv".format(genotype_name))
 
