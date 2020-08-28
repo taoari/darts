@@ -30,6 +30,7 @@ parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
 parser.add_argument('--epochs', type=int, default=50, help='num of training epochs')
 parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
 parser.add_argument('--layers', type=int, default=8, help='total number of layers')
+parser.add_argument('--primitives', type=str, default=None, help='primitives types')
 parser.add_argument('--model_path', type=str, default='saved_models', help='path to save the model')
 parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
 parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
@@ -73,7 +74,7 @@ def main():
 
   criterion = nn.CrossEntropyLoss()
   criterion = criterion.cuda()
-  model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion)
+  model = Network(args.init_channels, CIFAR_CLASSES, args.layers, criterion, primitives=args.primitives)
   model = model.cuda()
   logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
@@ -192,5 +193,5 @@ def infer(valid_queue, model, criterion):
 
 
 if __name__ == '__main__':
-  main() 
+  main()
 

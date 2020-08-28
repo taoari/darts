@@ -1,10 +1,18 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from operations import *
+from .operations import *
 from torch.autograd import Variable
-from genotypes import PRIMITIVES
-from genotypes import Genotype
+from .genotypes import PRIMITIVES_DICT
+from .genotypes import Genotype
+
+PRIMITIVES = None
+
+torch._default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+def to_device(self, *args, **kwargs):
+    return self.to(torch._default_device, *args, **kwargs)
+torch.Tensor.to_device = to_device
+torch.nn.Module.to_device = to_device
 
 
 class MixedOp(nn.Module):
@@ -60,7 +68,8 @@ class Cell(nn.Module):
 
 class Network(nn.Module):
 
-  def __init__(self, C, num_classes, layers, criterion, steps=4, multiplier=4, stem_multiplier=3):
+  def __init__(self, C=16, num_classes=10, layers=8, criterion=nn.CrossEntropyLoss(), steps=4, multiplier=4, stem_multiplier=3,
+      primitives=None):
     super(Network, self).__init__()
     self._C = C
     self._num_classes = num_classes
@@ -69,12 +78,15 @@ class Network(nn.Module):
     self._steps = steps
     self._multiplier = multiplier
 
+    global PRIMITIVES
+    PRIMITIVES = PRIMITIVES_DICT['G1'] if primitives is None else PRIMITIVES_DICT[primitives]
+
     C_curr = stem_multiplier*C
     self.stem = nn.Sequential(
       nn.Conv2d(3, C_curr, 3, padding=1, bias=False),
       nn.BatchNorm2d(C_curr)
     )
- 
+
     C_prev_prev, C_prev, C_curr = C_curr, C_curr, C
     self.cells = nn.ModuleList()
     reduction_prev = False
@@ -95,7 +107,7 @@ class Network(nn.Module):
     self._initialize_alphas()
 
   def new(self):
-    model_new = Network(self._C, self._num_classes, self._layers, self._criterion).cuda()
+    model_new = Network(self._C, self._num_classes, self._layers, self._criterion).to_device()
     for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
         x.data.copy_(y.data)
     return model_new
@@ -114,14 +126,14 @@ class Network(nn.Module):
 
   def _loss(self, input, target):
     logits = self(input)
-    return self._criterion(logits, target) 
+    return self._criterion(logits, target)
 
   def _initialize_alphas(self):
     k = sum(1 for i in range(self._steps) for n in range(2+i))
     num_ops = len(PRIMITIVES)
 
-    self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
-    self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).cuda(), requires_grad=True)
+    self.alphas_normal = Variable(1e-3*torch.randn(k, num_ops).to_device(), requires_grad=True)
+    self.alphas_reduce = Variable(1e-3*torch.randn(k, num_ops).to_device(), requires_grad=True)
     self._arch_parameters = [
       self.alphas_normal,
       self.alphas_reduce,
