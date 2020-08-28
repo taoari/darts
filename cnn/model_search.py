@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .operations import *
+from operations import *
 from torch.autograd import Variable
-from .genotypes import PRIMITIVES_DICT
-from .genotypes import Genotype
+from genotypes import PRIMITIVES_DICT
+from genotypes import Genotype
 
 PRIMITIVES = None
 
@@ -77,6 +77,7 @@ class Network(nn.Module):
     self._criterion = criterion
     self._steps = steps
     self._multiplier = multiplier
+    self._primitives = primitives
 
     global PRIMITIVES
     PRIMITIVES = PRIMITIVES_DICT['G1'] if primitives is None else PRIMITIVES_DICT[primitives]
@@ -107,7 +108,7 @@ class Network(nn.Module):
     self._initialize_alphas()
 
   def new(self):
-    model_new = Network(self._C, self._num_classes, self._layers, self._criterion).to_device()
+    model_new = Network(self._C, self._num_classes, self._layers, self._criterion, primitives=self._primitives).to_device()
     for x, y in zip(model_new.arch_parameters(), self.arch_parameters()):
         x.data.copy_(y.data)
     return model_new
