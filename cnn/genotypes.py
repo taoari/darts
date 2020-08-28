@@ -37,6 +37,39 @@ PRIMITIVES_DICT['G3'] = [
     'csep3_conv_5x5',
 ]
 
+PRIMITIVES_DICT['G4'] = [
+    'none',
+    'max_pool_3x3',
+    'avg_pool_3x3',
+    'skip_connect',
+    'csep_conv_3x3',
+    'csep_conv_5x5',
+    'cdil_conv_3x3',
+    'cdil_conv_5x5',
+    'csep3_conv_3x3',
+    'csep3_conv_5x5',
+    'cdil3_conv_3x3',
+    'cdil3_conv_5x5',
+]
+
+PRIMITIVES_DICT['G5'] = [
+    'none',
+    'max_pool_3x3',
+    'avg_pool_3x3',
+    'skip_connect',
+    'csep_conv_3x3',
+    'csep_conv_5x5',
+    'csep_conv_7x7',
+    'cdil_conv_3x3',
+    'cdil_conv_5x5',
+    'cdil_conv_7x7',
+    'csep3_conv_3x3',
+    'csep3_conv_5x5',
+    'csep3_conv_7x7',
+    'cdil3_conv_3x3',
+    'cdil3_conv_5x5',
+    'cdil3_conv_7x7',
+]
 
 NASNet = Genotype(
   normal = [
