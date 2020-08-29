@@ -37,6 +37,15 @@ PRIMITIVES_DICT['G3'] = [
     'csep3_conv_5x5',
 ]
 
+PRIMITIVES_DICT['G3_2'] = [
+    'none',
+    'max_pool_3x3',
+    'avg_pool_3x3',
+    'skip_connect',
+    'csep_conv_3x3',
+    'csep3_conv_3x3',
+]
+
 PRIMITIVES_DICT['G4'] = [
     'none',
     'max_pool_3x3',

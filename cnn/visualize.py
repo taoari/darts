@@ -45,6 +45,9 @@ if __name__ == '__main__':
     sys.exit(1)
 
   if os.path.exists(sys.argv[1]):
+    fname = os.path.splitext(sys.argv[1])[0]
+    if not os.path.exists(fname):
+        os.makedirs(fname)
     gens = []
     with open(sys.argv[1]) as f:
       for line in f.readlines():
@@ -54,8 +57,8 @@ if __name__ == '__main__':
     for i, gen in enumerate(gens):
       from genotypes import Genotype
       genotype = eval(gen)
-      plot(genotype.normal, "genotype.normal.{}.gv".format(i))
-      plot(genotype.reduce, "genotype.reduction.{}.gv".format(i))
+      plot(genotype.normal, "{}/genotype.normal.{}.gv".format(fname, i))
+      plot(genotype.reduce, "{}/genotype.reduction.{}.gv".format(fname, i))
 
   else:
 

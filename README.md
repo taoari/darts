@@ -22,6 +22,7 @@ Instructions for acquiring PTB and WT2 can be found [here](https://github.com/sa
 The easist way to get started is to evaluate our pretrained DARTS models.
 
 **CIFAR-10** ([cifar10_model.pt](https://drive.google.com/file/d/1Y13i4zKGKgjtWBdC0HWLavjO7wvEiGOc/view?usp=sharing))
+
 ```
 cd cnn && python test.py --auxiliary --model_path cifar10_model.pt
 ```
