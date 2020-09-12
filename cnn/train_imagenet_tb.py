@@ -98,8 +98,13 @@ def main():
   # logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
-  genotype = eval("genotypes.%s" % args.arch)
-  model = Network(args.init_channels, CLASSES, args.layers, args.auxiliary, genotype)
+  if '.' in args.arch:
+    from taowei.torch2.models import load_network
+    model = load_network(args.arch)
+  else:
+    genotype = eval("genotypes.%s" % args.arch)
+    model = Network(args.init_channels, CLASSES, args.layers, args.auxiliary, genotype)
+
   if args.parallel:
     model = nn.DataParallel(model).cuda()
   else:
