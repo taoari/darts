@@ -17,7 +17,6 @@ import torch.backends.cudnn as cudnn
 
 from torch.autograd import Variable
 from model import NetworkImageNet as Network
-from taowei.torch2.utils import _unwrap_model
 
 
 parser = argparse.ArgumentParser("imagenet")
@@ -57,13 +56,13 @@ utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 # logging.getLogger().addHandler(fh)
 # logging to both screen and file, and redirect print to logging.info
 
-from taowei.torch2.utils.logging import initialize_logger, print, initialize_tb_writer
-from taowei.torch2.utils import classif
-classif.print = print
+from taowei.torch2.utils import _unwrap_model
+from taowei.timer import Timer
+from taowei.torch2.utils.logging import initialize_logger, initialize_tb_writer
+from taowei.torch2.utils.classif import print_torch_info
 
 initialize_logger(os.path.join(args.save, 'auto'), mode='a')
 args.writer = initialize_tb_writer(os.path.join(args.save, 'runs'))
-from taowei.torch2.utils.classif import print_torch_info
 print_torch_info()
 
 CLASSES = 1000
@@ -87,7 +86,7 @@ class CrossEntropyLabelSmooth(nn.Module):
 
 def main():
   if not torch.cuda.is_available():
-    print('no gpu device available')
+    logging.info('no gpu device available')
     sys.exit(1)
 
   np.random.seed(args.seed)
@@ -96,8 +95,8 @@ def main():
   torch.manual_seed(args.seed)
   cudnn.enabled=True
   torch.cuda.manual_seed(args.seed)
-  # print('gpu device = %d' % args.gpu)
-  print("args = %s", args)
+  # logging.info('gpu device = %d' % args.gpu)
+  logging.info("args = %s", args)
 
   genotype = eval("genotypes.%s" % args.arch)
   model = Network(args.init_channels, CLASSES, args.layers, args.auxiliary, genotype)
@@ -106,7 +105,7 @@ def main():
   else:
     model = model.cuda()
 
-  print("param size = %fMB", utils.count_parameters_in_MB(model))
+  logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
   criterion = nn.CrossEntropyLoss()
   criterion = criterion.cuda()
@@ -164,16 +163,16 @@ def main():
     args.epoch = epoch # keep a record of current epoch
 
     scheduler.step(epoch)
-    # print('epoch %d lr %e', epoch, scheduler.get_lr()[0])
+    # logging.info('epoch %d lr %e', epoch, scheduler.get_lr()[0])
     _unwrap_model(model).drop_path_prob = args.drop_path_prob * epoch / args.epochs
     # model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
     train_acc, train_obj = train(train_queue, model, criterion_smooth, optimizer)
-    # print('train_acc %f', train_acc)
+    # logging.info('train_acc %f', train_acc)
 
     valid_acc_top1, valid_acc_top5, valid_obj = infer(valid_queue, model, criterion)
-    # print('valid_acc_top1 %f', valid_acc_top1)
-    # print('valid_acc_top5 %f', valid_acc_top5)
+    # logging.info('valid_acc_top1 %f', valid_acc_top1)
+    # logging.info('valid_acc_top5 %f', valid_acc_top5)
 
     is_best = False
     if valid_acc_top1 > best_acc_top1:
@@ -191,7 +190,7 @@ def main():
 def train(train_queue, model, criterion, optimizer):
   from taowei.torch2.utils.classif import ProgressMeter
   progress = ProgressMeter(iters_per_epoch=len(train_queue),
-    epoch=args.epoch, epochs=args.epochs, split='train', writer=args.writer)
+    epoch=args.epoch, epochs=args.epochs, split='train', writer=args.writer, batch_size=args.batch_size)
   # args.epoch = epoch # keep a record of current epoch for evaluate. TODO: a more elegant way
 
   # objs = utils.AvgrageMeter()
@@ -199,10 +198,11 @@ def train(train_queue, model, criterion, optimizer):
   # top5 = utils.AvgrageMeter()
   model.train()
 
-  end = time.time()
+  timer = Timer()
+  timer.tic()
   for step, (input, target) in enumerate(train_queue):
     # measure data loading time
-    progress.update('data_time', time.time() - end)
+    progress.update('data_time', timer.toc(from_last_toc=True))
 
     target = target.cuda(non_blocking=True)
     input = input.cuda()
@@ -215,10 +215,13 @@ def train(train_queue, model, criterion, optimizer):
     if args.auxiliary:
       loss_aux = criterion(logits_aux, target)
       loss += args.auxiliary_weight*loss_aux
+    progress.update('forward_time', timer.toc(from_last_toc=True))
 
     loss.backward()
+    progress.update('backward_time', timer.toc(from_last_toc=True))
     nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
     optimizer.step()
+    progress.update('update_time', timer.toc(from_last_toc=True))
 
     prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
     n = input.size(0)
@@ -230,8 +233,7 @@ def train(train_queue, model, criterion, optimizer):
     # top5.update(prec5.item(), n)
 
     # measure elapsed time
-    progress.update('batch_time', time.time() - end)
-    end = time.time()
+    progress.update('batch_time', timer.toctic())
 
     if step % args.report_freq == 0:
         progress.log_iter_stats(iter=step, batch_size=n,
@@ -241,7 +243,7 @@ def train(train_queue, model, criterion, optimizer):
   return progress.stats['top1'].avg, progress.stats['loss'].avg
 
     # if step % args.report_freq == 0:
-    #   print('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+    #   logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
 
   # return top1.avg, objs.avg
 
@@ -251,23 +253,25 @@ def infer(valid_queue, model, criterion):
   from taowei.torch2.utils.classif import ProgressMeter
   # epoch = args.start_epoch - 1 if 'epoch' not in args else args.epoch
   progress = ProgressMeter(iters_per_epoch=len(valid_queue),
-      epoch=args.epoch, split='val', writer=args.writer)
+      epoch=args.epoch, split='val', writer=args.writer, batch_size=args.batch_size)
 
   # objs = utils.AvgrageMeter()
   # top1 = utils.AvgrageMeter()
   # top5 = utils.AvgrageMeter()
   model.eval()
 
-  end = time.time()
+  timer = Timer()
+  timer.tic()
   for step, (input, target) in enumerate(valid_queue):
     # measure data loading time
-    progress.update('data_time', time.time() - end)
+    progress.update('data_time', timer.toc(from_last_toc=True))
 
     input = Variable(input, volatile=True).cuda()
     target = Variable(target, volatile=True).cuda(non_blocking=True)
 
     logits, _ = model(input)
     loss = criterion(logits, target)
+    progress.update('forward_time', timer.toc(from_last_toc=True))
 
     prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
     n = input.size(0)
@@ -279,8 +283,7 @@ def infer(valid_queue, model, criterion):
     # top5.update(prec5.item(), n)
 
     # measure elapsed time
-    progress.update('batch_time', time.time() - end)
-    end = time.time()
+    progress.update('batch_time', timer.toctic())
 
     if step % args.report_freq == 0:
         progress.log_iter_stats(iter=step, batch_size=n)
@@ -289,7 +292,7 @@ def infer(valid_queue, model, criterion):
   return progress.stats['top1'].avg, progress.stats['top5'].avg, progress.stats['loss'].avg
 
   #   if step % args.report_freq == 0:
-  #     print('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+  #     logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
 
   # return top1.avg, top5.avg, objs.avg
 
