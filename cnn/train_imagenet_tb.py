@@ -45,7 +45,7 @@ parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers')
 args = parser.parse_args()
 
-args.save = 'train-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
+args.save = 'eval-{}-{}'.format(args.save, time.strftime("%Y%m%d-%H%M%S"))
 utils.create_exp_dir(args.save, scripts_to_save=glob.glob('*.py'))
 
 # log_format = '%(asctime)s %(message)s'
@@ -152,11 +152,11 @@ def main():
 
   scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.decay_period, gamma=args.gamma)
 
-  # evaluate first
-  args.epoch = -1
-  _unwrap_model(model).drop_path_prob = 0.0
-  # model.drop_path_prob = 0.0
-  valid_acc_top1, valid_acc_top5, valid_obj = infer(valid_queue, model, criterion)
+  # # evaluate first
+  # args.epoch = -1
+  # _unwrap_model(model).drop_path_prob = 0.0
+  # # model.drop_path_prob = 0.0
+  # valid_acc_top1, valid_acc_top5, valid_obj = infer(valid_queue, model, criterion)
 
   best_acc_top1 = 0
   for epoch in range(args.epochs):
